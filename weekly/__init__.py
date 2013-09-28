@@ -35,7 +35,7 @@ JinjaRenderer.templ_type = 'bs3'
 Form.type_class_map = {'error': 'alert alert-danger',
                       'info': 'alert alert-info',
                       'success': 'alert alert-success',
-                      'warn': 'alert alert-warn'}
+                      'warn': 'alert alert-warning'}
 
 # General configuration
 # ======================

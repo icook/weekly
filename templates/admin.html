@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Admin</h2>
+<br>
+<h3>Import Form</h3>
+<b>Format:</b>
+<pre>username, fullname, alumni (true or false), email, major (cs, ee, me, coe, ae, ephy), team</pre>
+
+{% if test_table %}
+<br><br>
+<h3>User Index</h3>
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Major</th>
+      <th>Team</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in test_table %}
+    <tr>
+      <td>{{user['name']}}</td>
+      <td>{{user['username']}}</td>
+      <td>{{user['email']}}</td>
+      <td>{{user['major']}}</td>
+      <td>{{user['team']}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+<div class="col-md-8">
+{{ iform|safe }}
+</div>
+
+{% endblock %}

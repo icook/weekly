@@ -2,6 +2,7 @@ from weekly import db
 
 import cryptacular.bcrypt
 import datetime
+import datetime
 import mongoengine
 
 crypt = cryptacular.bcrypt.BCRYPTPasswordManager()
@@ -10,11 +11,13 @@ class User(db.Document):
     id = db.ObjectIdField()
     _password = db.StringField(max_length=1023, required=True)
     username = db.StringField(max_length=32, min_length=3, unique=True)
+    name = db.StringField(max_length=32, min_length=3, unique=True)
     team = db.ReferenceField('Team')
     major = db.ReferenceField('Major')
     email = db.StringField()
     admin = db.BooleanField(default=False)
     active = db.BooleanField(default=False)
+    alumni = db.BooleanField(default=False)
 
     @property
     def password(self):
@@ -22,9 +25,7 @@ class User(db.Document):
 
     @password.setter
     def password(self, val):
-        print val
         self._password = unicode(crypt.encode(val))
-        print self._password
 
     def check_password(self, password):
         return crypt.check(self._password, password)
@@ -46,12 +47,14 @@ class User(db.Document):
 
 class Post(db.Document):
     id = db.ObjectIdField()
-    body = db.StringField()
-    timestamp = db.DateTimeField()
-    user = db.ReferenceField(User)
+    body = db.StringField(min_length=10)
+    timestamp = db.DateTimeField(default=datetime.datetime.now())
+    year = db.IntField(required=True)
+    week = db.IntField(required=True)
+    user = db.ReferenceField(User, required=True)
 
 class Team(db.Document):
-    id = db.ObjectIdField(primary_key=True)
+    id = db.ObjectIdField()
     text = db.StringField()
 
     def __str__(self):
