@@ -1,20 +1,39 @@
-from app import db
+from weekly import db
 
-ROLE_USER = 0
-ROLE_ADMIN = 1
+import cryptacular.bcrypt
+import datetime
+import mongoengine
 
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key = True)
-    nickname = db.Column(db.String(64), unique = True)
-    email = db.Column(db.String(120), index = True, unique = True)
-    role = db.Column(db.SmallInteger, default = ROLE_USER)
-    posts = db.relationship('Post', backref = 'author', lazy = 'dynamic')
-    
+crypt = cryptacular.bcrypt.BCRYPTPasswordManager()
+
+class User(db.Document):
+    id = db.ObjectIdField()
+    _password = db.StringField(max_length=1023, required=True)
+    username = db.StringField(max_length=32, min_length=3, unique=True)
+    team = db.ReferenceField('Team')
+    major = db.ReferenceField('Major')
+    email = db.StringField()
+    admin = db.BooleanField(default=False)
+    active = db.BooleanField(default=False)
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, val):
+        print val
+        self._password = unicode(crypt.encode(val))
+        print self._password
+
+    def check_password(self, password):
+        return crypt.check(self._password, password)
+
     def is_authenticated(self):
         return True
 
     def is_active(self):
-        return True
+        return self.active
 
     def is_anonymous(self):
         return False
@@ -23,13 +42,24 @@ class User(db.Model):
         return unicode(self.id)
 
     def __repr__(self):
-        return '<User %r>' % (self.nickname)    
-        
-class Post(db.Model):
-    id = db.Column(db.Integer, primary_key = True)
-    body = db.Column(db.String(140))
-    timestamp = db.Column(db.DateTime)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+        return '<User %r>' % (self.nickname)
 
-    def __repr__(self):
-        return '<Post %r>' % (self.body)
+class Post(db.Document):
+    id = db.ObjectIdField()
+    body = db.StringField()
+    timestamp = db.DateTimeField()
+    user = db.ReferenceField(User)
+
+class Team(db.Document):
+    id = db.ObjectIdField(primary_key=True)
+    text = db.StringField()
+
+    def __str__(self):
+        return self.text
+
+class Major(db.Document):
+    key = db.StringField(max_length=5, primary_key=True)
+    text = db.StringField()
+
+    def __str__(self):
+        return self.text
