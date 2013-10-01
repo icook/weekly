@@ -6,6 +6,20 @@ import datetime
 
 from weekly.models import Major, Team
 
+
+class CheckNode(BaseNode):
+    """ Creates a simple checkbox for your form. """
+    template = 'checkbox'
+
+    def resolve_data(self, data):
+        if self.name in data:
+            self.data = True
+        else:
+            # Unchecked checkboxes don't submit any data so we'll set the
+            # value to false if there is no post data
+            self.data = False
+
+
 class SettingsForm(yota.Form):
     full_name = EntryNode(validators=MinMaxValidator(3, 64))
     alumni = CheckNode()

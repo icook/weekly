@@ -161,9 +161,10 @@ def signup():
         if success:
             try:
                 user = User(emails=data['email'],
+                            name=data['full_name'],
+                            alumni=(data['alumni'] == "true"),
                             username=data['username'])
                 # In case there are no options, only set these if possible
-                print data
                 if data['team']:
                     user.team = Team(id=data['team'])
                 if data['major']:

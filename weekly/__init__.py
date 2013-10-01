@@ -32,6 +32,7 @@ db = MongoEngine(app)
 
 # patch yota to use bootstrap3
 JinjaRenderer.templ_type = 'bs3'
+JinjaRenderer.search_path.insert(0, root + "/templates/yota/")
 Form.type_class_map = {'error': 'alert alert-danger',
                       'info': 'alert alert-info',
                       'success': 'alert alert-success',
