@@ -1,7 +1,53 @@
 {% extends "base.html" %}
 {% block title %}Weekly for Week {{ week }} of {{ year }}{% endblock %}
 
+{% block next_prev %}
+<a href="{{Post.prev_week(year=year, week=week)}}" class="btn btn-sm btn-primary">Last Week</a>
+<a href="{{Post.next_week(year=year, week=week)}}" class="btn btn-sm btn-primary">Next Week</a>
+{% endblock %}
+
 {% block content %}
 <h2>{{ year }}, Week {{ week }}<br><small>{{subtitle}}</h2>
+{{ self.next_prev() }}
+<br><br>
 
+{% for teamname, posts in teams.items() %}
+  <h2>{{teamname}}</h2>
+  {% for exists, vals in posts %}
+    {% if exists %}
+      <h3 class="pull-left"><a name="{{vals.id}}">{{vals.user.name}} ({{ vals.user.username }})</a></h3>
+      <h3 class="pull-right">{{vals.timestamp|datetime}}</h3>
+      <div class="clearfix"></div>
+      <div class="well">
+        {{ vals.md_body|safe }}
+      </div>
+      {% if vals.comments %}
+      <div style="padding-left:30px;">
+        <h3>Comments</h3>
+        {% for comment in vals.comments %}
+          <h4 class="pull-left"><a name="{{vals.id}}">{{comment.user.name}} ({{ comment.user.username }})</a></h4>
+          <h4 class="pull-right">{{comment.time|datetime}}</h4>
+          <div class="clearfix"></div>
+          <div class="well well-sm">
+            {{ comment.md_body|safe }}
+          </div>
+        {% endfor %}
+        </div>
+      {% endif %}
+      <a href="{{url_for('comment', postid=vals.id)}}" class="btn btn-sm btn-primary">
+        Add Comment
+      </a>
+      <div class="clearfix"></div>
+      <br><br>
+    {% else %}
+    <h3>{{vals.name}} ({{ vals.username }})</h3>
+    <div class="well">
+      <p>No weekly</p>
+    </div>
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+<br><br>
+<br><br>
+{{ self.next_prev() }}
 {% endblock %}

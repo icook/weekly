@@ -4,7 +4,7 @@ import yota
 import time
 import datetime
 
-from weekly.models import Major, Team
+from weekly.models import Major, Team, User
 
 
 class CheckNode(BaseNode):
@@ -22,7 +22,9 @@ class CheckNode(BaseNode):
 
 class SettingsForm(yota.Form):
     full_name = EntryNode(validators=MinMaxValidator(3, 64))
-    alumni = CheckNode()
+    type = ListNode(items=[(0, 'Volunteer'),
+                           (1, 'Senior'),
+                           (2, 'Alumni')])
     password = PasswordNode()
     password_confirm = PasswordNode(title="Confirm")
     _valid_pass = Check(MatchingValidator(message="Password fields must match"),
@@ -48,14 +50,12 @@ class SettingsForm(yota.Form):
 
 
     def validator(self):
-        self.alumni = self.alumni == "true"
-
-        if len(self.password) > 0:
-            if len(self.password) > 32:
+        if len(self.password.data) > 0:
+            if len(self.password.data) > 32:
                 self.password.add_error({'message': 'Password cannot be longer than 32 characters'})
-            elif len(self.password) < 5:
+            elif len(self.password.data) < 5:
                 self.password.add_error({'message': 'Password cannot be fewer than 5 characters'})
-            elif ' ' in self.password:
+            elif ' ' in self.password.data:
                 self.password.add_error({'message': 'Password must not contain spaces'})
 
 
@@ -63,7 +63,9 @@ class SettingsForm(yota.Form):
 class RegisterForm(yota.Form):
     username = EntryNode(validators=MinMaxValidator(3, 64))
     full_name = EntryNode(validators=MinMaxValidator(3, 64))
-    alumni = CheckNode()
+    type = ListNode(items=[(0, 'Volunteer'),
+                           (1, 'Senior'),
+                           (2, 'Alumni')])
     password = PasswordNode(validators=MinMaxValidator(5, 64))
     password_confirm = PasswordNode(title="Confirm")
     _valid_pass = Check(MatchingValidator(message="Password fields must match"),
@@ -91,6 +93,15 @@ class RegisterForm(yota.Form):
                                                 items=lst))
         return form
 
+
+class CommentForm(yota.Form):
+    body = TextareaNode(rows=25,
+                        columns=100,
+                        css_class="form-control",
+                        validators=MinLengthValidator(10))
+    submit = SubmitNode(title="Add Comment")
+
+
 class LoginForm(yota.Form):
     username = EntryNode()
     password = PasswordNode()
@@ -112,7 +123,7 @@ class ImportForm(yota.Form):
 
         users = []
         for ln in str(self.body.data).splitlines(True):
-            user = {}
+            user = User()
             # clean up and strip the list
             pts = [x.strip() for x in ln.split(',')]
             # lowercase specific parts
@@ -120,20 +131,25 @@ class ImportForm(yota.Form):
             pts[4] = pts[4].lower()
             pts[5] = pts[5].lower().capitalize()
 
-            if pts[2] not in ["false", "true"]:
-                self.body.add_error({'message': pts[1] + ' alumni status is invalid.'})
+            if pts[2] not in ["alum", "senior", "vol"]:
+                self.body.add_error({'message': pts[1] + ' type is invalid.'})
             else:
-                user['alumni'] = bool(pts[2] == "true")
+                if pts[2] == "alum":
+                    user._type = 2
+                elif pts[2] == "senior":
+                    user._type = 1
+                else:
+                    user._type = 0
 
             if pts[4].lower() not in majlst:
                 self.body.add_error({'message': pts[1] + ' major is invalid.'})
             else:
-                user['major'] = Major.objects.get(key=pts[4])
+                user.major = Major.objects.get(key=pts[4])
 
             if not EmailValidator().valid(pts[3]):
                 self.body.add_error({'message': pts[1] + ' email is invalid.'})
             else:
-                user['email'] = pts[3]
+                user.email = pts[3]
 
             try:
                 Team.objects.get(text=pts[5])
@@ -142,10 +158,10 @@ class ImportForm(yota.Form):
                     {'message': pts[1] + '\'s team ' + pts[5] + ' does not exist!',
                      'type': 'warn',
                      'block': False})
-            user['team'] = pts[5]
+            user.team_txt = pts[5]
 
-            user['name'] = pts[1]
-            user['username'] = pts[0]
+            user.name = pts[1]
+            user.username = pts[0]
 
             users.append(user)
 

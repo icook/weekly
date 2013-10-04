@@ -2,11 +2,37 @@
 {% block title %}Admin Panel{% endblock %}
 
 {% block content %}
-<h2>Admin</h2>
+<h2>Admin Aread</h2>
+{% if msg %}
+<div class="alert alert-{{msg_type}}">{{msg}}</div>
+{% endif %}
 <br>
-<h3>Import Form</h3>
+<h2>Unapproved Users</h2>
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Approve</th>
+      <th>Username</th>
+      <th>Name</th>
+      <th>Email</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+    <tr>
+      <td><a href="{{url_for('admin', username=user.username, action='approve')}}" class="btn btn-success">Aprove</a></td>
+      <td>{{user.team}}</td>
+      <td>{{user.username}}</td>
+      <td>{{user.name}}</td>
+      <td>{{user.email}}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<br>
+<h2>Import Form</h2>
 <b>Format:</b>
-<pre>username, fullname, alumni (true or false), email, major (cs, ee, me, coe, ae, ephy), team</pre>
+<pre>username, fullname, type (alum, senior, vol), email, major ({{majors}}), team</pre>
 
 {% if test_table %}
 <br><br>
@@ -19,16 +45,18 @@
       <th>Email</th>
       <th>Major</th>
       <th>Team</th>
+      <th>Type</th>
     </tr>
   </thead>
   <tbody>
     {% for user in test_table %}
     <tr>
-      <td>{{user['name']}}</td>
-      <td>{{user['username']}}</td>
-      <td>{{user['email']}}</td>
-      <td>{{user['major']}}</td>
-      <td>{{user['team']}}</td>
+      <td>{{user.name}}</td>
+      <td>{{user.username}}</td>
+      <td>{{user.email}}</td>
+      <td>{{user.major}}</td>
+      <td>{{user.team_txt}}</td>
+      <td>{{user.type}}</td>
     </tr>
     {% endfor %}
   </tbody>

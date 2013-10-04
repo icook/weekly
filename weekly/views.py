@@ -6,7 +6,7 @@ import datetime
 import time
 
 from weekly import app, db, lm
-from weekly.forms import LoginForm, RegisterForm, PostForm, ImportForm, SettingsForm
+from weekly.forms import LoginForm, RegisterForm, PostForm, ImportForm, SettingsForm, CommentForm
 from weekly.models import User, Post, Team, Major
 
 @lm.user_loader
@@ -33,19 +33,53 @@ def index(week=None, year=None):
     saturday = time.strftime("%a, %d %b %Y", sat)
     subtitle = "{0} through {1}".format(sunday, saturday)
 
-    posts = Post.objects(week=week, year=year)
     teams = {}
-    for post in posts:
-        tid = post.user.team.id
-        if tid in teams:
-            teams[tid].append(post)
-        else:
-            teams[tid] = [post]
+    for team in Team.objects.all():
+        if team.text == "Other":
+            continue
+
+        posts = []
+        for user in team.users():
+            try:
+                posts.append((True, Post.objects.get(user=user, week=week, year=year)))
+            except Post.DoesNotExist:
+                posts.append((False, user))
+
+        teams[team.text] = posts
 
 
     return render_template('index.html',
                            week=week,
                            year=year,
+                           subtitle=subtitle,
+                           teams=teams,
+                           Post=Post)
+
+
+@app.route('/comment/<postid>', methods = ['GET', 'POST'])
+@login_required
+def comment(postid=None):
+    post = Post.objects.get(id=postid)
+
+    # Super sloppy un-abstracted pretty print for the current week
+    sun = time.strptime('{0} {1} 1'.format(post.year, post.week), '%Y %W %w')
+    sunday = time.strftime("%a, %d %b %Y", sun)
+    sat = time.strptime('{0} {1} 5'.format(post.year, post.week), '%Y %W %w')
+    saturday = time.strftime("%a, %d %b %Y", sat)
+    subtitle = "{0} through {1}".format(sunday, saturday)
+
+    form = CommentForm()
+    if request.method == "POST":
+        success, invalid_nodes = form.validate(request.form)
+        data = form.data_by_attr()
+
+        if success:
+            post.add_comment(g.user.id, data['body'])
+            return redirect(url_for('index', week=post.week, year=post.year) + "#" + str(post.id))
+
+    return render_template('comment.html',
+                           form=form.render(),
+                           post=post,
                            subtitle=subtitle)
 
 @app.route('/settings', methods = ['GET', 'POST'])
@@ -53,10 +87,6 @@ def index(week=None, year=None):
 def settings():
     usr = g.user
     form = SettingsForm()
-    # set the form defaults to user info
-    form.full_name.data = usr.name
-    form.alumni.data = usr.alumni
-    form.email.data = usr.email
     if request.method == "POST":
         success, invalid_nodes = form.validate(request.form)
         data = form.data_by_attr()
@@ -65,11 +95,30 @@ def settings():
         if success:
             if form.full_name.data != usr.name:
                 usr.name = data['full_name']
-            if form.alumni.data != usr.alumni:
-                usr.alumni = data['alumni']
-            if len(form.password) > 0:
+                form.start.add_error(
+                    {'message': 'Updated your name', 'type': 'success'})
+            if int(form.type.data) != usr._type:
+                usr._type = int(data['type'])
+                form.start.add_error(
+                    {'message': 'Updated your account type', 'type': 'success'})
+            if len(form.password.data) > 0:
                 usr.password = data['password']
+                form.start.add_error(
+                    {'message': 'Updated your password', 'type': 'success'})
+            if form.email.data != usr.email:
+                usr.email = data['email']
+                form.start.add_error(
+                    {'message': 'Updated your email address', 'type': 'success'})
 
+            for node in form._node_list:
+                node.data = ''
+
+            usr.save()
+
+    # set the form defaults to user info
+    form.full_name.data = usr.name
+    form.type.data = usr._type
+    form.email.data = usr.email
 
     return render_template('settings.html', form=form.render())
 
@@ -104,11 +153,21 @@ def post():
     return render_template('post.html', form=form.render())
 
 @app.route('/admin', methods = ['GET', 'POST'])
+@app.route('/admin/<action>/<username>', methods = ['GET', 'POST'])
 @login_required
-def admin():
+def admin(username=None, action=None):
     if not g.user.admin:
         return redirect(url_for('index'))
 
+    msg = ""
+
+    # Make a little list of major keys for reference
+    majors = []
+    for major in Major.objects.all():
+        majors.append(major.key)
+    majors = ', '.join(majors)
+
+    # Handle the logic of doing mass imports
     iform = ImportForm()
     test_table = None
     if request.method == "POST":
@@ -117,12 +176,39 @@ def admin():
             success, invalid_nodes = iform.validate(request.form)
             data = iform.data_by_attr()
             if success:
-                if 'go' in data:
+                if not data['go']:
                     test_table = iform.body.valid_data
+                else:
+                    for user in iform.body.valid_data:
+                        try:
+                            team = Team.objects.get_or_create(text=user.team_txt)
+                            delattr(user, 'team_txt')
+                            user.team = team[0]
+                            user.password = user.username
+                            user.save()
+                            iform.start.add_error(
+                                {'message': 'Inserted user ' + user.username, 'type': 'success'})
+                        except mongoengine.errors.NotUniqueError:
+                            iform.start.add_error(
+                                {'message': 'User ' + user.username + ' already exists'})
+
+
+    # Handle logic of approving or denying user accounts
+    if username is not None:
+        if action == "approve":
+            user = User.objects.get(username=username)
+            user.active = True
+            user.save()
+            msg = user.username + " has been activated"
+    users = User.objects(active=False).all()
 
     return render_template('admin.html',
                            iform=iform.render(),
-                           test_table=test_table)
+                           test_table=test_table,
+                           majors=majors,
+                           users=users,
+                           msg=msg,
+                           msg_type="success")
 
 @app.route('/login', methods = ['GET', 'POST'])
 def login():
@@ -162,7 +248,7 @@ def signup():
             try:
                 user = User(emails=data['email'],
                             name=data['full_name'],
-                            alumni=(data['alumni'] == "true"),
+                            _type=data['type'],
                             username=data['username'])
                 # In case there are no options, only set these if possible
                 if data['team']:

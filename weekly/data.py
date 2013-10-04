@@ -3,5 +3,7 @@ majors = [('Computer Science', 'cs'),
           ('Computer Engineering', 'coe'),
           ('Mechanical Engineering', 'me'),
           ('Aerospace Engineering', 'ae'),
-          ('Engineering Physics', 'ephy')]
+          ('Engineering Physics', 'ephy'),
+          ('Chemical Engineering', 'cheme'),
+          ('Unknown', 'unk')]
 teams = ['Other']
