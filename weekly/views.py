@@ -70,7 +70,7 @@ def comment(postid=None):
 
     form = CommentForm()
     if request.method == "POST":
-        success, invalid_nodes = form.validate(request.form)
+        success = form.validate(request.form)
         data = form.data_by_attr()
 
         if success:
@@ -88,7 +88,7 @@ def settings():
     usr = g.user
     form = SettingsForm()
     if request.method == "POST":
-        success, invalid_nodes = form.validate(request.form)
+        success = form.validate(request.form)
         data = form.data_by_attr()
 
         # the lazist logic block, but it'll work for now
@@ -133,7 +133,7 @@ def users():
 def post():
     form = PostForm.get_form()
     if request.method == "POST":
-        success, invalid_nodes = form.validate(request.form)
+        success = form.validate(request.form)
         data = form.data_by_attr()
         if success:
             try:
@@ -173,7 +173,7 @@ def admin(username=None, action=None):
     if request.method == "POST":
         tp = request.form['_arg_form']
         if tp == "import":
-            success, invalid_nodes = iform.validate(request.form)
+            success = iform.validate(request.form)
             data = iform.data_by_attr()
             if success:
                 if not data['go']:
@@ -217,7 +217,7 @@ def login():
 
     form = LoginForm()
     if request.method == "POST":
-        success, invalid_nodes = form.validate(request.form)
+        success = form.validate(request.form)
         data = form.data_by_attr()
         if success:
             try:
@@ -242,7 +242,7 @@ def logout():
 def signup():
     form = RegisterForm.get_form()
     if request.method == 'POST':
-        success, invalid_nodes = form.validate(request.form)
+        success = form.validate(request.form)
         data = form.data_by_attr()
         if success:
             try:
