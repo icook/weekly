@@ -24,7 +24,8 @@ class SettingsForm(yota.Form):
     full_name = EntryNode(validators=MinMaxValidator(3, 64))
     type = ListNode(items=[(0, 'Volunteer'),
                            (1, 'Senior'),
-                           (2, 'Alumni')])
+                           (2, 'Alumni'),
+                           (3, 'Other')])
     password = PasswordNode()
     password_confirm = PasswordNode(title="Confirm")
     _valid_pass = Check(MatchingValidator(message="Password fields must match"),
@@ -65,7 +66,8 @@ class RegisterForm(yota.Form):
     full_name = EntryNode(validators=MinMaxValidator(3, 64))
     type = ListNode(items=[(0, 'Volunteer'),
                            (1, 'Senior'),
-                           (2, 'Alumni')])
+                           (2, 'Alumni'),
+                           (3, 'Other')])
     password = PasswordNode(validators=MinMaxValidator(5, 64))
     password_confirm = PasswordNode(title="Confirm")
     _valid_pass = Check(MatchingValidator(message="Password fields must match"),
@@ -138,8 +140,10 @@ class ImportForm(yota.Form):
                     user._type = 2
                 elif pts[2] == "senior":
                     user._type = 1
-                else:
+                elif pts[2] == "vol":
                     user._type = 0
+                else:
+                    user._type = 3
 
             if pts[4].lower() not in majlst:
                 self.body.add_error({'message': pts[1] + ' major is invalid.'})

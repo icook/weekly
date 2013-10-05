@@ -30,8 +30,10 @@ class User(db.Document):
             return 'Volunteer'
         elif self._type == 1:
             return 'Senior'
-        else:
+        elif self._type == 2:
             return 'Alumni'
+        else:
+            return 'Other'
 
     @property
     def password(self):
