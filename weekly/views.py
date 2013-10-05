@@ -86,7 +86,7 @@ def comment(postid=None):
 @login_required
 def settings():
     usr = g.user
-    form = SettingsForm()
+    form = SettingsForm.get_form()
     if request.method == "POST":
         success = form.validate(request.form)
         data = form.data_by_attr()
@@ -109,6 +109,14 @@ def settings():
                 usr.email = data['email']
                 form.start.add_error(
                     {'message': 'Updated your email address', 'type': 'success'})
+            if form.team.data != str(usr.team.id):
+                usr.team = Team(id=data['team'])
+                form.start.add_error(
+                    {'message': 'Updated your team', 'type': 'success'})
+            if form.major.data != usr.major.key:
+                usr.major = Major(id=data['major'])
+                form.start.add_error(
+                    {'message': 'Updated your major', 'type': 'success'})
 
             for node in form._node_list:
                 node.data = ''
@@ -119,6 +127,8 @@ def settings():
     form.full_name.data = usr.name
     form.type.data = usr._type
     form.email.data = usr.email
+    form.team.data = usr.team.id
+    form.major.data = usr.major.id
 
     return render_template('settings.html', form=form.render())
 
@@ -246,7 +256,7 @@ def signup():
         data = form.data_by_attr()
         if success:
             try:
-                user = User(emails=data['email'],
+                user = User(email=data['email'],
                             name=data['full_name'],
                             _type=data['type'],
                             username=data['username'])
