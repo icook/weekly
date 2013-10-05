@@ -133,7 +133,7 @@ class ImportForm(yota.Form):
             pts[4] = pts[4].lower()
             pts[5] = pts[5].lower().capitalize()
 
-            if pts[2] not in ["alum", "senior", "vol"]:
+            if pts[2] not in ["alum", "senior", "vol", "other"]:
                 self.body.add_error({'message': pts[1] + ' type is invalid.'})
             else:
                 if pts[2] == "alum":
