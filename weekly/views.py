@@ -195,6 +195,7 @@ def admin(username=None, action=None):
                             delattr(user, 'team_txt')
                             user.team = team[0]
                             user.password = user.username
+                            user.active = True
                             user.save()
                             iform.start.add_error(
                                 {'message': 'Inserted user ' + user.username, 'type': 'success'})
