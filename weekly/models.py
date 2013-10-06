@@ -16,7 +16,7 @@ crypt = cryptacular.bcrypt.BCRYPTPasswordManager()
 class User(db.Document):
     _password = db.StringField(max_length=1023, required=True)
     username = db.StringField(max_length=32, min_length=3, unique=True)
-    name = db.StringField(max_length=32, min_length=3, unique=True)
+    name = db.StringField(max_length=32, min_length=3)
     team = db.ReferenceField('Team')
     major = db.ReferenceField('Major')
     email = db.StringField(required=True)

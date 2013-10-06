@@ -4,6 +4,7 @@ from flask.ext.login import login_user, logout_user, current_user, login_require
 import mongoengine
 import datetime
 import time
+import logging
 
 from weekly import app, db, lm
 from weekly.forms import LoginForm, RegisterForm, PostForm, ImportForm, SettingsForm, CommentForm
@@ -121,7 +122,21 @@ def settings():
             for node in form._node_list:
                 node.data = ''
 
-            usr.save()
+            try:
+                usr.save()
+            except mongoengine.errors.OperationError:
+                form.start.add_error({'message': 'Unknown database error, please retry.'})
+                logging.warn("Post data contents: {0}\n"
+                             "Form data contents: {1}".format(data, request.form))
+            except mongoengine.errors.ValidationError:
+                form.start.add_error({'message': 'Validation error. This shouldn\t happen :('})
+                logging.warn("Post data contents: {0}\n"
+                             "Form data contents: {1}".format(data, request.form))
+            except mongoengine.errors.NotUniqueError:
+                form.start.add_error({'message': 'Not unique error. This shouldn\'t happen.'})
+                logging.warn("Post data contents: {0}\n"
+                             "Form data contents: {1}".format(data, request.form))
+
 
     # set the form defaults to user info
     form.full_name.data = usr.name
