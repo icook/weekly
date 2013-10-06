@@ -201,5 +201,5 @@ class PostForm(yota.Form):
         form.insert(1, ListNode(_attr_name='week', items=weeks, data=data))
         return form
 
-    def error_header_generate(self):
+    def error_header_generate(self, errors):
         self.start.add_error({'message': 'Please fix the errors below'})
