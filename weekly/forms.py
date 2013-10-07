@@ -5,7 +5,7 @@ import time
 import datetime
 
 from weekly.models import Major, Team, User
-from weekly.lib import week_human, get_now
+from weekly.lib import week_human, get_now, week_through
 
 
 class CheckNode(BaseNode):
@@ -188,15 +188,12 @@ class PostForm(yota.Form):
         weeks = []
         data = None
         for i in range(-3, 3):
-            sun = time.strptime('{0} {1} 1'.format(now[0], now[1]+i), '%Y %W %w')
-            sunday = time.strftime("%a, %d %b %Y", sun)
-            sat = time.strptime('{0} {1} 5'.format(now[0], now[1]+i), '%Y %W %w')
-            saturday = time.strftime("%a, %d %b %Y", sat)
+            sun, sat = week_through(now[0], now[1]+i)
             tag = "{0}-{1}".format(now[0], now[1]+i)
             if i == -1:
                 data = tag
             weeks.append(
-                (tag, "{0} ({1} through {2})".format(week_human(now[1]+i), sunday, saturday))
+                (tag, "{0} ({1} through {2})".format(week_human(now[1]+i), sun, sat))
             )
 
         form.insert(1, ListNode(_attr_name='week', items=weeks, data=data))

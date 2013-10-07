@@ -9,7 +9,7 @@ import logging
 from weekly import app, db, lm
 from weekly.forms import LoginForm, RegisterForm, PostForm, ImportForm, SettingsForm, CommentForm
 from weekly.models import User, Post, Team, Major
-from weekly.lib import week_human, get_now
+from weekly.lib import week_human, get_now, week_through
 
 @lm.user_loader
 def load_user(id):
@@ -29,12 +29,9 @@ def index(week=None, year=None):
     if not year:
         year = now[0]
 
-    sun = time.strptime('{0} {1} 1'.format(year, week), '%Y %W %w')
-    sunday = time.strftime("%a, %d %b %Y", sun)
-    sat = time.strptime('{0} {1} 5'.format(year, week), '%Y %W %w')
-    saturday = time.strftime("%a, %d %b %Y", sat)
-    subtitle = "{0} through {1}".format(sunday, saturday)
+    subtitle = "{0} through {1}".format(*week_through(year, week))
 
+    # Group all the users into teams for display
     teams = {}
     for team in Team.objects.all():
         if team.text == "Other":
