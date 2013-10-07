@@ -1,0 +1,41 @@
+<h3 class="pull-left">
+    <a href="{{post.get_abs_url()}}" name="{{post.id}}">
+        {{post.user.name}}
+        ({{ post.user.username }})
+    </a>
+</h3>
+      <h3 class="pull-right">{{post.timestamp|datetime}}</h3>
+      <div class="clearfix"></div>
+      <div class="well">
+        {{ post.md_body|safe }}
+      </div>
+      {% if post.user.username == g.user.username %}
+        <a href="{{post.get_edit_url()}}" class="icon-edit icon-large"> &nbsp;Edit</a><br><br>
+      {% endif %}
+      {% if post.comments %}
+      <div style="padding-left:30px;">
+        <h3>Comments</h3>
+        {% for comment in post.comments %}
+        <h4 class="pull-left">
+            {% set hash = post.get_comment_hash(comment) %}
+            <a href="{{post.get_abs_url_comm(comment)}}" name="{{hash}}">
+                {{comment.user.name}}
+                ({{ comment.user.username }})
+            </a>
+        </h4>
+          <h4 class="pull-right">{{comment.time|datetime}}</h4>
+          <div class="clearfix"></div>
+          <div class="well well-sm">
+            {{ comment.md_body|safe }}
+          </div>
+          {% if comment.user.username == g.user.username %}
+          <a href="{{post.get_edit_url_comm(comment)}}" class="icon-edit icon-large"> &nbsp;Edit</a><br><br>
+          {% endif %}
+        {% endfor %}
+        </div>
+      {% endif %}
+      <a href="{{ url_for('comment', postid=post.id) }}" class="btn btn-sm btn-primary">
+        Add Comment
+      </a>
+      <div class="clearfix"></div>
+      <br><br>

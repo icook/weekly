@@ -2,6 +2,10 @@
 {% block title %}Create new Post{% endblock %}
 
 {% block content %}
+{% if edit %}
+<h2>Edit Your Weekly</h2>
+{% else %}
 <h2>Post New Weekly</h2>
+{% endif %}
 {{ form|safe }}
 {% endblock %}

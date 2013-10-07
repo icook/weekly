@@ -4,6 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% block head %}
     <link href="/static/lib/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <link href="/static/css/main.css" rel="stylesheet" media="screen">
     <link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">
     <title>{% block title %}{% endblock %} - JMS Weekly</title>
     {% endblock %}
@@ -12,6 +13,7 @@
     <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
     <script src="http://malsup.github.com/jquery.form.js"></script> 
     <script src="/static/lib/js/yota.js"></script>
+    <script src="/static/js/main.js"></script>
     <div id="wrap">
       <div class="navbar navbar-default navbar-fixed-top">
         <div class="container">
@@ -45,7 +47,6 @@
         </div>
       </div>
       <div class="container">
-        <br><br><br>
         {% block content %}{% endblock %}
       </div>
     </div>

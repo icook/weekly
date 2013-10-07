@@ -21,7 +21,7 @@ class CheckNode(BaseNode):
 
 
 class SettingsForm(yota.Form):
-    full_name = EntryNode(validators=MinMaxValidator(3, 64))
+    full_name = EntryNode(title="Display title", validators=MinMaxValidator(3, 64))
     type = ListNode(items=[(0, 'Volunteer'),
                            (1, 'Senior'),
                            (2, 'Alumni'),
@@ -52,7 +52,7 @@ class SettingsForm(yota.Form):
 
     def validator(self):
         if len(self.password.data) > 0:
-            if len(self.password.data) > 32:
+            if len(self.password.data) > 128:
                 self.password.add_error({'message': 'Password cannot be longer than 32 characters'})
             elif len(self.password.data) < 5:
                 self.password.add_error({'message': 'Password cannot be fewer than 5 characters'})
@@ -62,8 +62,8 @@ class SettingsForm(yota.Form):
 
 
 class RegisterForm(yota.Form):
-    username = EntryNode(validators=MinMaxValidator(3, 64))
-    full_name = EntryNode(validators=MinMaxValidator(3, 64))
+    username = EntryNode(validators=MinMaxValidator(3, 32))
+    full_name = EntryNode(title="Display Name", validators=MinMaxValidator(3, 128))
     type = ListNode(items=[(0, 'Volunteer'),
                            (1, 'Senior'),
                            (2, 'Alumni'),

@@ -2,17 +2,8 @@
 {% block title %}Create new Post{% endblock %}
 
 {% block content %}
-<h2>{{ post.year }}, Week {{ post.week }}<br><small>{{subtitle}}</h2>
-<h3>{{post.user.name}} ({{ post.user.username }})</h3>
-<div class="well">
-  {{ post.md_body|safe }}
-</div>
-{% if post.comments %}
-  <h3>Comments</h3>
-  {% for comment in post.comments %}
-
-  {% endfor %}
-{% endif %}
 <h2>Add your comment</h2>
 {{ form|safe }}
+<h2>Original Post</h2>
+{% include 'post_block.html' %}
 {% endblock %}

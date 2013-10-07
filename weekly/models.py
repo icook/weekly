@@ -45,6 +45,7 @@ class User(db.Document):
 
     def check_password(self, password):
         return crypt.check(self._password, password)
+        #return True
 
     def is_authenticated(self):
         return True
@@ -114,6 +115,22 @@ class Post(db.Document):
             week -= 1
 
         return url_for('index', week=week, year=year)
+
+    def get_abs_url(self):
+        return url_for('index', week=self.week, year=self.year) + "#" + str(self.id)
+
+    def get_abs_url_comm(self, comment):
+        return url_for('index', week=self.week, year=self.year) + \
+                "#" + self.get_comment_hash(comment)
+
+    def get_comment_hash(self, comment):
+        return "{0}{1}".format(self.id, self.comments.index(comment))
+
+    def get_edit_url(self):
+        return url_for('post', postid=self.id)
+
+    def get_edit_url_comm(self, comment):
+        return url_for('comment', postid=self.id, comm_no=self.comments.index(comment))
 
     def add_comment(self, user, body):
         comment = Comment(user=user,

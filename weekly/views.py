@@ -58,8 +58,9 @@ def index(week=None, year=None):
 
 
 @app.route('/comment/<postid>', methods = ['GET', 'POST'])
+@app.route('/comment/edit/<postid>/<int:comm_no>', methods = ['GET', 'POST'])
 @login_required
-def comment(postid=None):
+def comment(postid=None, comm_no=None):
     post = Post.objects.get(id=postid)
 
     # Super sloppy un-abstracted pretty print for the current week
@@ -70,13 +71,26 @@ def comment(postid=None):
     subtitle = "{0} through {1}".format(sunday, saturday)
 
     form = CommentForm()
+
+    # Inject defaults if we're editing
+    if comm_no:
+        comment = post.comments[comm_no]
+        form.body.data = comment.body
+        form.submit.title = "Save"
+
+    # process a submission of the form
     if request.method == "POST":
         success = form.validate(request.form)
         data = form.data_by_attr()
 
         if success:
-            post.add_comment(g.user.id, data['body'])
-            return redirect(url_for('index', week=post.week, year=post.year) + "#" + str(post.id))
+            if comm_no:
+                post.comments[comm_no].body = data['body']
+                post.save()
+            else:
+                comment = post.add_comment(g.user.id, data['body'])
+
+            return redirect(post.get_abs_url_comm(comment))
 
     return render_template('comment.html',
                            form=form.render(),
@@ -154,28 +168,51 @@ def users():
     return render_template('users.html', users=usrs)
 
 @app.route('/post', methods = ['GET', 'POST'])
+@app.route('/edit/<postid>', methods = ['GET', 'POST'])
 @login_required
-def post():
+def post(postid=None):
+    """ Create a new post (weekly post) or edit an existing one """
     form = PostForm.get_form()
+
+    # Inject defaults if we're editing
+    if postid:
+        post = Post.objects.get(id=postid)
+        form.body.data = post.body
+        form.submit.title = "Save"
+        # Sloppy way to remove the week selection
+        form._node_list.remove(form.week)
+        edit = True
+    else:
+        edit = False
+
     if request.method == "POST":
         success = form.validate(request.form)
         data = form.data_by_attr()
         if success:
             try:
-                year, week = data['week'].split('-')
-                post = Post(user=g.user.id,
-                            year=year,
-                            week=week,
-                            body=data['body'])
-                post.save()
+                if postid:
+                    # update the post
+                    post.body = form.body.data
+                    post.save()
+                else:
+                    # create a new post
+                    year, week = data['week'].split('-')
+                    post = Post(user=g.user.id,
+                                year=year,
+                                week=week,
+                                body=data['body'])
+                    post.save()
+
             except mongoengine.errors.OperationError:
                 form.start.add_error({'message': 'Unknown database error, please retry.'})
             except mongoengine.errors.ValidationError:
                 form.start.add_error({'message': 'You\'ve already posted for this date'})
             else:
-                return redirect(url_for('index', week=week, year=year) + "#" + str(post.id))
+                return redirect(post.get_abs_url)
 
-    return render_template('post.html', form=form.render())
+    return render_template('post.html',
+                           form=form.render(),
+                           edit=edit)
 
 @app.route('/admin', methods = ['GET', 'POST'])
 @app.route('/admin/<action>/<username>', methods = ['GET', 'POST'])

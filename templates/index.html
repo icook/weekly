@@ -15,30 +15,8 @@
   <h2>{{teamname}}</h2>
   {% for exists, vals in posts %}
     {% if exists %}
-      <h3 class="pull-left"><a name="{{vals.id}}">{{vals.user.name}} ({{ vals.user.username }})</a></h3>
-      <h3 class="pull-right">{{vals.timestamp|datetime}}</h3>
-      <div class="clearfix"></div>
-      <div class="well">
-        {{ vals.md_body|safe }}
-      </div>
-      {% if vals.comments %}
-      <div style="padding-left:30px;">
-        <h3>Comments</h3>
-        {% for comment in vals.comments %}
-          <h4 class="pull-left"><a name="{{vals.id}}">{{comment.user.name}} ({{ comment.user.username }})</a></h4>
-          <h4 class="pull-right">{{comment.time|datetime}}</h4>
-          <div class="clearfix"></div>
-          <div class="well well-sm">
-            {{ comment.md_body|safe }}
-          </div>
-        {% endfor %}
-        </div>
-      {% endif %}
-      <a href="{{url_for('comment', postid=vals.id)}}" class="btn btn-sm btn-primary">
-        Add Comment
-      </a>
-      <div class="clearfix"></div>
-      <br><br>
+      {% set post = vals %}
+      {% include 'post_block.html' %}
     {% else %}
     <h3>{{vals.name}} ({{ vals.username }})</h3>
     <div class="well">
