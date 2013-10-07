@@ -9,6 +9,7 @@ import logging
 from weekly import app, db, lm
 from weekly.forms import LoginForm, RegisterForm, PostForm, ImportForm, SettingsForm, CommentForm
 from weekly.models import User, Post, Team, Major
+from weekly.lib import week_human, get_now
 
 @lm.user_loader
 def load_user(id):
@@ -22,9 +23,9 @@ def before_request():
 @app.route('/<int:year>/<int:week>')
 @login_required
 def index(week=None, year=None):
-    now = datetime.datetime.now().isocalendar()
+    now = get_now().isocalendar()
     if not week:
-        week = now[1] - 1
+        week = now[1] - 2
     if not year:
         year = now[0]
 
@@ -54,6 +55,7 @@ def index(week=None, year=None):
                            year=year,
                            subtitle=subtitle,
                            teams=teams,
+                           human=week_human(week),
                            Post=Post)
 
 
