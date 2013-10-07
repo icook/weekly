@@ -1,6 +1,4 @@
 # compiled assets
-static/css/*
-static/js/*
 backup/*
 
 *.py[cod]
