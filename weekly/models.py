@@ -138,6 +138,7 @@ class Post(db.Document):
                           time=datetime.datetime.now())
         self.comments.append(comment)
         self.save()
+        return comment
 
 
 class Team(db.Document):
