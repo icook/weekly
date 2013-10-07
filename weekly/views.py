@@ -208,7 +208,7 @@ def post(postid=None):
             except mongoengine.errors.ValidationError:
                 form.start.add_error({'message': 'You\'ve already posted for this date'})
             else:
-                return redirect(post.get_abs_url)
+                return redirect(post.get_abs_url())
 
     return render_template('post.html',
                            form=form.render(),
