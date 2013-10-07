@@ -104,6 +104,7 @@ class CommentForm(yota.Form):
     body = TextareaNode(rows=25,
                         columns=100,
                         css_class="form-control",
+                        template='epictext',
                         validators=MinLengthValidator(10))
     submit = SubmitNode(title="Add Comment")
 
@@ -182,7 +183,8 @@ class PostForm(yota.Form):
     body = TextareaNode(rows=25,
                         columns=100,
                         css_class="form-control",
-                        validators=MinLengthValidator(10))
+                        validators=MinLengthValidator(10),
+                        template='epictext')
     submit = SubmitNode(title="Post")
 
     @classmethod

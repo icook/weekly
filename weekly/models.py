@@ -6,10 +6,7 @@ import mongoengine
 
 from flask import url_for
 
-from misaka import Markdown, HtmlRenderer
-
-rndr = HtmlRenderer()
-md = Markdown(rndr)
+import markdown2
 
 crypt = cryptacular.bcrypt.BCRYPTPasswordManager()
 
@@ -69,7 +66,7 @@ class Comment(db.EmbeddedDocument):
 
     @property
     def md_body(self):
-        return md.render(self.body)
+        return markdown2.markdown(self.body)
 
 class Post(db.Document):
     id = db.ObjectIdField()
@@ -82,7 +79,7 @@ class Post(db.Document):
 
     @property
     def md_body(self):
-        return md.render(self.body)
+        return markdown2.markdown(self.body)
 
     @classmethod
     def next_week(self, week=None, year=None):

@@ -9,7 +9,7 @@ requires = ['pymongo',
             'flask-login',
             'yota',
             'cryptacular',
-            'misaka',
+            'markdown2',
             'Babel']
 
 setup(name='weekly',

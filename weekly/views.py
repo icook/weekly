@@ -71,11 +71,17 @@ def comment(postid=None, comm_no=None):
 
     form = CommentForm()
 
+    # detects old editor request
+    if request.args.get('oldeditor', 'false') == 'true':
+        form.body.template = 'textarea_lnk'
+
     # Inject defaults if we're editing
     if comm_no:
         comment = post.comments[comm_no]
         form.body.data = comment.body
         form.submit.title = "Save"
+    else:
+        form.body.storage = "new_comment"
 
     # process a submission of the form
     if request.method == "POST":
@@ -173,6 +179,10 @@ def post(postid=None):
     """ Create a new post (weekly post) or edit an existing one """
     form = PostForm.get_form()
 
+    # detects old editor request
+    if request.args.get('oldeditor', 'false') == 'true':
+        form.body.template = 'textarea_lnk'
+
     # Inject defaults if we're editing
     if postid:
         post = Post.objects.get(id=postid)
@@ -181,6 +191,8 @@ def post(postid=None):
         # Sloppy way to remove the week selection
         form._node_list.remove(form.week)
         form.start.title = "Edit your weekly"
+    else:
+        form.body.storage = "new_post"
 
     if request.method == "POST":
         success = form.validate(request.form)
