@@ -4,9 +4,12 @@ import yota
 import time
 import datetime
 
-from weekly.models import Major, Team, User
+from weekly.models import Major, Team, User, Post
 from weekly.lib import week_human, get_now, week_through
 
+from flask import g
+
+yota.Form.form_class = "form-horizontal"
 
 class CheckNode(BaseNode):
     """ Creates a simple checkbox for your form. """
@@ -175,6 +178,7 @@ class ImportForm(yota.Form):
 
 
 class PostForm(yota.Form):
+    title = "Post A New Weekly"
     body = TextareaNode(rows=25,
                         columns=100,
                         css_class="form-control",
@@ -198,6 +202,16 @@ class PostForm(yota.Form):
 
         form.insert(1, ListNode(_attr_name='week', items=weeks, data=data))
         return form
+
+    def validator(self):
+        try:
+            year, week = self.week.data.split('-')
+            pst = Post.objects.get(year=year, user=g.user.id, week=week)
+        except Post.DoesNotExist:
+            pass
+        else:
+            self.week.add_error({'message': 'A post for the time already exists. You can edit that post <a href="{0}">here</a>.'.format(pst.get_edit_url())})
+
 
     def error_header_generate(self, errors):
         self.start.add_error({'message': 'Please fix the errors below'})

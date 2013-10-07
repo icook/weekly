@@ -180,9 +180,7 @@ def post(postid=None):
         form.submit.title = "Save"
         # Sloppy way to remove the week selection
         form._node_list.remove(form.week)
-        edit = True
-    else:
-        edit = False
+        form.start.title = "Edit your weekly"
 
     if request.method == "POST":
         success = form.validate(request.form)
@@ -205,13 +203,12 @@ def post(postid=None):
             except mongoengine.errors.OperationError:
                 form.start.add_error({'message': 'Unknown database error, please retry.'})
             except mongoengine.errors.ValidationError:
-                form.start.add_error({'message': 'You\'ve already posted for this date'})
+                form.start.add_error({'message': 'Validation error. This shouldn\' happen'})
             else:
                 return redirect(post.get_abs_url())
 
     return render_template('post.html',
-                           form=form.render(),
-                           edit=edit)
+                           form=form.render())
 
 @app.route('/admin', methods = ['GET', 'POST'])
 @app.route('/admin/<action>/<username>', methods = ['GET', 'POST'])
