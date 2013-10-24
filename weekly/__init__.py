@@ -12,6 +12,7 @@ from weekly import data
 import babel.dates as dates
 import os
 import datetime
+import logging
 
 root = os.path.abspath(os.path.dirname(__file__) + '/../')
 
@@ -31,6 +32,14 @@ if os.getenv('PRODUCTION', False):
 else:
     app.config.from_pyfile('../settings.cfg')
 db = MongoEngine(app)
+
+log_level = app.config.get('LOG_LEVEL', 'ERROR')
+try:
+    level = getattr(logging, log_level)
+    app.logger.setLevel(level)
+    app.logger.info("Setting application log level to " + log_level)
+except AttributeError:
+    app.logger.setLevel(logging.ERROR)
 
 
 # patch yota to use bootstrap3
