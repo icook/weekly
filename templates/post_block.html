@@ -4,7 +4,7 @@
         ({{ post.user.username }})
     </a>
 </h3>
-      <h3 class="pull-right">{{post.timestamp|datetime}}</h3>
+      <h3 class="pull-right">{{post.timestamp|date_ago}} <small>({{post.timestamp|datetime}})</small></h3>
       <div class="clearfix"></div>
       <div class="well">
         {{ post.md_body|safe }}
@@ -23,7 +23,7 @@
                 ({{ comment.user.username }})
             </a>
         </h4>
-          <h4 class="pull-right">{{comment.time|datetime}}</h4>
+          <h4 class="pull-right">{{comment.time|date_ago}} <small>({{comment.time|datetime}})</small></h4>
           <div class="clearfix"></div>
           <div class="well well-sm">
             {{ comment.md_body|safe }}

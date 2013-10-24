@@ -1,15 +1,15 @@
-from flask import render_template, flash, redirect, session, url_for, request, g
+from flask import render_template, flash, redirect, session, url_for, request, g, abort
 from flask.ext.login import login_user, logout_user, current_user, login_required
+
+from weekly import app, db, lm
+from weekly.forms import LoginForm, RegisterForm, PostForm, ImportForm, SettingsForm, CommentForm
+from weekly.models import User, Post, Team, Major
+from weekly.lib import week_human, get_now, week_through, send_email, catch_error_graceful
 
 import mongoengine
 import datetime
 import time
 import logging
-
-from weekly import app, db, lm
-from weekly.forms import LoginForm, RegisterForm, PostForm, ImportForm, SettingsForm, CommentForm
-from weekly.models import User, Post, Team, Major
-from weekly.lib import week_human, get_now, week_through
 
 @lm.user_loader
 def load_user(id):
@@ -18,6 +18,37 @@ def load_user(id):
 @app.before_request
 def before_request():
     g.user = current_user
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('error.html',
+                           errmsg='The requested resource could not be found',
+                           errno=404)
+
+@app.errorhandler(403)
+def page_not_found(e):
+    return render_template('error.html',
+                           errmsg='Access to the requested resource is denied',
+                           errno=403)
+
+@app.errorhandler(500)
+def page_not_found(e):
+    return render_template('error.html',
+                           errmsg=('An internal application error has occured. '
+                                   'Sorry about that, I\'ve likely made a '
+                                   'mistake somewhere'),
+                           errno=500)
+
+@app.route('/announcements')
+@app.route('/announcement/<id>')
+@login_required
+def announcements(id=None):
+    if id is not None:
+        announcements = [Post.objects.get(id=id), ]
+    else:
+        announcements = Post.objects.all().filter(announcement=True).order_by('-timestamp')
+    return render_template('announce.html',
+                           posts=announcements)
 
 @app.route('/')
 @app.route('/<int:year>/<int:week>')
@@ -60,14 +91,20 @@ def index(week=None, year=None):
 @app.route('/comment/edit/<postid>/<int:comm_no>', methods = ['GET', 'POST'])
 @login_required
 def comment(postid=None, comm_no=None):
-    post = Post.objects.get(id=postid)
+    try:
+        post = Post.objects.get(id=postid)
+    except Post.DoesNotExist:
+        abort(404)
 
-    # Super sloppy un-abstracted pretty print for the current week
-    sun = time.strptime('{0} {1} 1'.format(post.year, post.week), '%Y %W %w')
-    sunday = time.strftime("%a, %d %b %Y", sun)
-    sat = time.strptime('{0} {1} 5'.format(post.year, post.week), '%Y %W %w')
-    saturday = time.strftime("%a, %d %b %Y", sat)
-    subtitle = "{0} through {1}".format(sunday, saturday)
+    if post.year < 0:
+        subtitle = ''
+    else:
+        # Super sloppy un-abstracted pretty print for the current week
+        sun = time.strptime('{0} {1} 1'.format(post.year, post.week), '%Y %W %w')
+        sunday = time.strftime("%a, %d %b %Y", sun)
+        sat = time.strptime('{0} {1} 5'.format(post.year, post.week), '%Y %W %w')
+        saturday = time.strftime("%a, %d %b %Y", sat)
+        subtitle = "{0} through {1}".format(sunday, saturday)
 
     form = CommentForm()
 
@@ -89,13 +126,16 @@ def comment(postid=None, comm_no=None):
         data = form.data_by_attr()
 
         if success:
-            if comm_no:
-                post.comments[comm_no].body = data['body']
-                post.save()
+            try:
+                if comm_no:
+                    post.comments[comm_no].body = data['body']
+                    post.save()
+                else:
+                    comment = post.add_comment(g.user.id, data['body'])
+            except Exception:
+                catch_error_graceful(form)
             else:
-                comment = post.add_comment(g.user.id, data['body'])
-
-            return redirect(post.get_abs_url_comm(comment))
+                return redirect(post.get_abs_url_comm(comment))
 
     return render_template('comment.html',
                            form=form.render(),
@@ -115,27 +155,27 @@ def settings():
         if success:
             if form.full_name.data != usr.name:
                 usr.name = data['full_name']
-                form.start.add_error(
+                form.start.add_msg(
                     {'message': 'Updated your name', 'type': 'success'})
             if int(form.type.data) != usr._type:
                 usr._type = int(data['type'])
-                form.start.add_error(
+                form.start.add_msg(
                     {'message': 'Updated your account type', 'type': 'success'})
             if len(form.password.data) > 0:
                 usr.password = data['password']
-                form.start.add_error(
+                form.start.add_msg(
                     {'message': 'Updated your password', 'type': 'success'})
             if form.email.data != usr.email:
                 usr.email = data['email']
-                form.start.add_error(
+                form.start.add_msg(
                     {'message': 'Updated your email address', 'type': 'success'})
             if form.team.data != str(usr.team.id):
                 usr.team = Team(id=data['team'])
-                form.start.add_error(
+                form.start.add_msg(
                     {'message': 'Updated your team', 'type': 'success'})
             if form.major.data != usr.major.key:
                 usr.major = Major(id=data['major'])
-                form.start.add_error(
+                form.start.add_msg(
                     {'message': 'Updated your major', 'type': 'success'})
 
             for node in form._node_list:
@@ -143,18 +183,8 @@ def settings():
 
             try:
                 usr.save()
-            except mongoengine.errors.OperationError:
-                form.start.add_error({'message': 'Unknown database error, please retry.'})
-                logging.warn("Post data contents: {0}\n"
-                             "Form data contents: {1}".format(data, request.form))
-            except mongoengine.errors.ValidationError:
-                form.start.add_error({'message': 'Validation error. This shouldn\t happen :('})
-                logging.warn("Post data contents: {0}\n"
-                             "Form data contents: {1}".format(data, request.form))
-            except mongoengine.errors.NotUniqueError:
-                form.start.add_error({'message': 'Not unique error. This shouldn\'t happen.'})
-                logging.warn("Post data contents: {0}\n"
-                             "Form data contents: {1}".format(data, request.form))
+            except Exception:
+                catch_error_graceful(form)
 
 
     # set the form defaults to user info
@@ -169,15 +199,18 @@ def settings():
 @app.route('/users')
 @login_required
 def users():
-    usrs = User.objects.all()
+    usrs = User.objects.all().filter(active=True)
     return render_template('users.html', users=usrs)
 
 @app.route('/post', methods = ['GET', 'POST'])
-@app.route('/edit/<postid>', methods = ['GET', 'POST'])
+@app.route('/edit/<postid>', defaults={'announce': False}, methods = ['GET', 'POST'])
+@app.route('/announce', defaults={'announce': True, 'postid': None}, methods = ['GET', 'POST'])
 @login_required
-def post(postid=None):
+def post(postid=None, announce=False):
     """ Create a new post (weekly post) or edit an existing one """
-    form = PostForm.get_form()
+    if announce and not g.user.admin:
+        abort(403)
+    form = PostForm.get_form(announce)
 
     # detects old editor request
     if request.args.get('oldeditor', 'false') == 'true':
@@ -185,7 +218,11 @@ def post(postid=None):
 
     # Inject defaults if we're editing
     if postid:
-        post = Post.objects.get(id=postid)
+        # 404 the user if they're trying to edit something that doesn't exist
+        try:
+            post = Post.objects.get(id=postid)
+        except (Post.DoesNotExist, mongoengine.errors.ValidationError):
+            abort(404)
         form.body.data = post.body
         form.submit.title = "Save"
         # Sloppy way to remove the week selection
@@ -205,17 +242,23 @@ def post(postid=None):
                     post.save()
                 else:
                     # create a new post
-                    year, week = data['week'].split('-')
+                    # if they're an admin and making announcement, null out
+                    # the year and week, and set announcement flag
+                    if g.user.admin and announce:
+                        year = -1
+                        week = -1
+                        announce = True
+                    else:
+                        year, week = data['week'].split('-')
+                        announce = False
                     post = Post(user=g.user.id,
                                 year=year,
                                 week=week,
+                                announcement=announce,
                                 body=data['body'])
                     post.save()
-
-            except mongoengine.errors.OperationError:
-                form.start.add_error({'message': 'Unknown database error, please retry.'})
-            except mongoengine.errors.ValidationError:
-                form.start.add_error({'message': 'Validation error. This shouldn\' happen'})
+            except Exception:
+                catch_error_graceful(form)
             else:
                 return redirect(post.get_abs_url())
 
@@ -257,20 +300,39 @@ def admin(username=None, action=None):
                             user.password = user.username
                             user.active = True
                             user.save()
-                            iform.start.add_error(
+                            iform.start.add_msg(
                                 {'message': 'Inserted user ' + user.username, 'type': 'success'})
                         except mongoengine.errors.NotUniqueError:
-                            iform.start.add_error(
-                                {'message': 'User ' + user.username + ' already exists'})
+                            iform.start.add_msg(
+                                {'message': 'User ' + user.username + ' already exists, and thus was not created'})
+                        except Exception:
+                            catch_error_graceful(form)
 
 
     # Handle logic of approving or denying user accounts
     if username is not None:
         if action == "approve":
             user = User.objects.get(username=username)
+            if user.active:
+                flash(user.username + " has already been activated",
+                      category="danger")
+                return redirect(url_for('admin'))
             user.active = True
             user.save()
-            msg = user.username + " has been activated"
+            flash(user.username + " has been activated", category="success")
+        elif action == "reject":
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                return redirect(url_for('admin'))
+            user.delete()
+            flash(user.username + " has been removed", category="danger")
+        elif action == "test_email":
+            user = User.objects.get(username=username)
+            if send_email(user, "mail/test.html"):
+                flash(user.email + " has been sent a test email", category="success")
+            else:
+                flash("There was an error sending test email", category="danger")
     users = User.objects(active=False).all()
 
     return render_template('admin.html',
@@ -292,21 +354,23 @@ def login():
         data = form.data_by_attr()
         if success:
             try:
-                user = User.objects.get(username=data['username'])
+                user = User.objects.get(username=data['username'].lower(), active=True)
             except User.DoesNotExist:
-                pass
+                form.start.add_msg({"message": "Invalid credentials, or account not active."})
+            except Exception:
+                catch_error_graceful(form)
             else:
                 if user and user.check_password(data['password']):
                     login_user(user)
                     return redirect(url_for('index'))
                 else:
-                    form.start.add_error({"message": "Invalid credentials"})
+                    form.start.add_msg({"message": "Invalid credentials, or account not active."})
     return render_template('login.html', form=form.render())
 
 @app.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
 
 @app.route('/signup', methods = ['GET', 'POST'])
@@ -328,12 +392,10 @@ def signup():
                     user.major = Major(key=data['major'])
                 user.password = data['password']
                 user.save()
-            except (mongoengine.errors.OperationError, mongoengine.errors.ValidationError):
-                raise
-                form.start.add_error(
-                    {'message': 'Unknown database error, please retry.'})
+            except Exception:
+                catch_error_graceful(form)
             else:
-                form.start.add_error(
+                form.start.add_msg(
                     {'message': 'You\'ve been successfully registered, your account is pending approval', 'type': 'success'})
 
     return render_template('signup.html', form=form.render())

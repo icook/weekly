@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Site Announcements{% endblock %}
+
+{% block content %}
+<h2>Site Announcements</h2>
+{% for post in posts %}
+  {% include 'post_block.html' %}
+{% endfor %}
+{% endblock %}

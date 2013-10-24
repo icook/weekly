@@ -1,5 +1,6 @@
 # compiled assets
 backup/*
+settings.cfg
 
 *.py[cod]
 *.swp

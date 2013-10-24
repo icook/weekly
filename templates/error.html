@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Server Error {{errno}}{% endblock %}
+
+{% block content %}
+<br />
+<br />
+<div class="panel panel-default">
+  <!-- Default panel contents -->
+  <div class="panel-heading"><h2>Server Error {{errno}}</h2></div>
+  <div class="panel-body">
+    <p>{{errmsg}}</p>
+  </div>
+</div>
+{% endblock %}

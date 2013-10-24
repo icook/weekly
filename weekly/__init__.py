@@ -11,6 +11,7 @@ from weekly import data
 
 import babel.dates as dates
 import os
+import datetime
 
 root = os.path.abspath(os.path.dirname(__file__) + '/../')
 
@@ -25,8 +26,10 @@ lm.login_view = 'login'
 # set our template path
 app.jinja_loader = FileSystemLoader(os.path.join(root, 'templates'))
 # setup mongo connection information
-app.config["MONGODB_SETTINGS"] = {'DB': "weekly"}
-app.config["SECRET_KEY"] = "KeepThisS3cr3t"
+if os.getenv('PRODUCTION', False):
+    app.config.from_pyfile('../../settings.cfg')
+else:
+    app.config.from_pyfile('../settings.cfg')
 db = MongoEngine(app)
 
 
@@ -58,15 +61,48 @@ def format_datetime(value, format='medium'):
         format="EE dd.MM.y"
     return dates.format_datetime(value, format)
 
-# Make user availible easily in the global var
-@app.before_request
-def before_request():
-    g.user = current_user
+@app.template_filter('date_ago')
+def format_date_ago(time):
+    """
+    Get a datetime object or a int() Epoch timestamp and return a
+    pretty string like 'an hour ago', 'Yesterday', '3 months ago',
+    'just now', etc
+    """
+    now = datetime.datetime.now()
+    if type(time) is int:
+        diff = now - datetime.fromtimestamp(time)
+    elif isinstance(time, datetime.datetime):
+        diff = now - time
+    elif not time:
+        diff = now - now
+    second_diff = diff.seconds
+    day_diff = diff.days
 
-# tell the session manager how to access the user object
-@lm.user_loader
-def user_loader(id):
-    return User.objects.get(id=id)
+    if day_diff < 0:
+        return ''
+
+    if day_diff == 0:
+        if second_diff < 10:
+            return "just now"
+        if second_diff < 60:
+            return str(second_diff) + " seconds ago"
+        if second_diff < 120:
+            return  "a minute ago"
+        if second_diff < 3600:
+            return str( second_diff / 60 ) + " minutes ago"
+        if second_diff < 7200:
+            return "an hour ago"
+        if second_diff < 86400:
+            return str( second_diff / 3600 ) + " hours ago"
+    if day_diff == 1:
+        return "Yesterday"
+    if day_diff < 7:
+        return str(day_diff) + " days ago"
+    if day_diff < 31:
+        return str(day_diff/7) + " weeks ago"
+    if day_diff < 365:
+        return str(day_diff/30) + " months ago"
+    return str(day_diff/365) + " years ago"
 
 from weekly import views, models
 

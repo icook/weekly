@@ -16,7 +16,7 @@ class User(db.Document):
     name = db.StringField(max_length=32, min_length=3)
     team = db.ReferenceField('Team')
     major = db.ReferenceField('Major')
-    email = db.StringField(required=True)
+    email = db.StringField(required=True, unique=True)
     admin = db.BooleanField(default=False)
     active = db.BooleanField(default=False)
     _type = db.IntField(min_value=0, max_value=3)
@@ -75,6 +75,7 @@ class Post(db.Document):
     year = db.IntField(required=True)
     week = db.IntField(required=True)
     user = db.ReferenceField(User, required=True)
+    announcement = db.BooleanField(default=False)
     comments = db.ListField(db.EmbeddedDocumentField(Comment))
 
     @property
@@ -114,11 +115,17 @@ class Post(db.Document):
         return url_for('index', week=week, year=year)
 
     def get_abs_url(self):
-        return url_for('index', week=self.week, year=self.year) + "#" + str(self.id)
+        if self.announcement:
+            return url_for('announcements', id=self.id) + "#" + str(self.id)
+        else:
+            return url_for('index', week=self.week, year=self.year) + "#" + str(self.id)
 
     def get_abs_url_comm(self, comment):
-        return url_for('index', week=self.week, year=self.year) + \
-                "#" + self.get_comment_hash(comment)
+        if self.announcement:
+            return url_for('announcements', id=self.id) + "#" + str(self.id)
+        else:
+            return url_for('announcements') + \
+                    "#" + self.get_comment_hash(comment)
 
     def get_comment_hash(self, comment):
         return "{0}{1}".format(self.id, self.comments.index(comment))

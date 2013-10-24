@@ -1,6 +1,8 @@
-from yota.nodes import *
-from yota.validators import *
-import yota
+from yota import Check, Form, Listener, Blueprint
+import yota.validators as validators
+import yota.nodes as nodes
+from yota.exceptions import *
+
 import time
 import datetime
 
@@ -9,9 +11,9 @@ from weekly.lib import week_human, get_now, week_through
 
 from flask import g
 
-yota.Form.form_class = "form-horizontal"
+Form.form_class = "form-horizontal"
 
-class CheckNode(BaseNode):
+class CheckNode(nodes.Base):
     """ Creates a simple checkbox for your form. """
     template = 'checkbox'
 
@@ -24,19 +26,19 @@ class CheckNode(BaseNode):
             self.data = False
 
 
-class SettingsForm(yota.Form):
-    full_name = EntryNode(title="Display title", validators=MinMaxValidator(3, 64))
-    type = ListNode(items=[(0, 'Volunteer'),
+class SettingsForm(Form):
+    full_name = nodes.Entry(title="Display title", validators=validators.MinMax(3, 64))
+    type = nodes.List(items=[(0, 'Volunteer'),
                            (1, 'Senior'),
                            (2, 'Alumni'),
                            (3, 'Other')])
-    password = PasswordNode()
-    password_confirm = PasswordNode(title="Confirm")
-    _valid_pass = Check(MatchingValidator(message="Password fields must match"),
+    password = nodes.Password()
+    password_confirm = nodes.Password(title="Confirm")
+    _valid_pass = Check(validators.Matching(message="Password fields must match"),
                         "password",
                         "password_confirm")
-    email = EntryNode(validators=EmailValidator())
-    submit = SubmitNode(title="Update")
+    email = nodes.Entry(validators=validators.Email())
+    submit = nodes.Submit(title="Update")
 
     @classmethod
     def get_form(cls):
@@ -44,12 +46,12 @@ class SettingsForm(yota.Form):
         lst = []
         for major in Major.objects.all():
             lst.append((major.key, major.text))
-        form.insert_after('full_name', ListNode(_attr_name='major',
+        form.insert_node_after('full_name', nodes.List(_attr_name='major',
                                                 items=lst))
         lst = []
         for team in Team.objects.all():
             lst.append((team.id, team.text))
-        form.insert_after('full_name', ListNode(_attr_name='team',
+        form.insert_node_after('full_name', nodes.List(_attr_name='team',
                                                 items=lst))
         return form
 
@@ -57,32 +59,60 @@ class SettingsForm(yota.Form):
     def validator(self):
         if len(self.password.data) > 0:
             if len(self.password.data) > 128:
-                self.password.add_error({'message': 'Password cannot be longer than 32 characters'})
+                self.password.add_msg({'message': 'Password cannot be longer than 32 characters'})
             elif len(self.password.data) < 5:
-                self.password.add_error({'message': 'Password cannot be fewer than 5 characters'})
+                self.password.add_msg({'message': 'Password cannot be fewer than 5 characters'})
             elif ' ' in self.password.data:
-                self.password.add_error({'message': 'Password must not contain spaces'})
+                self.password.add_msg({'message': 'Password must not contain spaces'})
 
 
 
-class RegisterForm(yota.Form):
-    username = EntryNode(validators=MinMaxValidator(3, 32))
-    full_name = EntryNode(title="Display Name", validators=MinMaxValidator(3, 128))
-    type = ListNode(items=[(0, 'Volunteer'),
+class RegisterForm(Form):
+    username = nodes.Entry(validators=validators.MinMax(3, 32))
+    full_name = nodes.Entry(title="Display Name", validators=validators.MinMax(3, 128))
+    type = nodes.List(items=[(0, 'Volunteer'),
                            (1, 'Senior'),
                            (2, 'Alumni'),
                            (3, 'Other')])
-    password = PasswordNode(validators=MinMaxValidator(5, 64))
-    password_confirm = PasswordNode(title="Confirm")
-    _valid_pass = Check(MatchingValidator(message="Password fields must match"),
+    password = nodes.Password(validators=validators.MinMax(5, 64))
+    password_confirm = nodes.Password(title="Confirm")
+    _valid_pass = Check(validators.Matching(message="Password fields must match"),
                         "password",
                         "password_confirm")
-    email = EntryNode(validators=EmailValidator())
-    submit = SubmitNode(title="Sign Up", css_class="btn-sm btn btn-success")
+    email = nodes.Entry(validators=validators.Email())
+    submit = nodes.Submit(title="Sign Up", css_class="btn-sm btn btn-success")
 
     def validator(self):
+        # Check for a unique username
+        try:
+            user = User.objects.get(username=self.username.data)
+        except User.DoesNotExist:
+            pass
+        else:
+            # Give em a bit of help if they possibly just tried to register twice
+            if user.active:
+                self.username.add_msg(message='Username is taken. That account is currently active.')
+            else:
+                self.username.add_msg(message='Username is taken. That account is currently pending activation.')
+
+        # And a unique email address
+        try:
+            user = User.objects.get(email=self.email.data)
+        except User.DoesNotExist:
+            pass
+        else:
+            # Give em a bit of help if they possibly just tried to register twice
+            if user.active:
+                self.username.add_msg(message='Email address is already in use. That account is currently active.')
+            else:
+                self.username.add_msg(message='Email address is already in use. That account is currently pending activation.')
+
+
         if ' ' in self.password:
-            self.password.add_error({'message': 'Password must not contain spaces'})
+            self.password.add_msg({'message': 'Password must not contain spaces'})
+
+        if ' ' in self.username:
+            self.password.add_msg({'message': 'Username cannot contain spaces'})
 
     @classmethod
     def get_form(cls):
@@ -90,38 +120,38 @@ class RegisterForm(yota.Form):
         lst = []
         for major in Major.objects.all():
             lst.append((major.key, major.text))
-        form.insert_after('full_name', ListNode(_attr_name='major',
+        form.insert_node_after('full_name', nodes.List(_attr_name='major',
                                                 items=lst))
         lst = []
         for team in Team.objects.all():
             lst.append((team.id, team.text))
-        form.insert_after('full_name', ListNode(_attr_name='team',
+        form.insert_node_after('full_name', nodes.List(_attr_name='team',
                                                 items=lst))
         return form
 
 
-class CommentForm(yota.Form):
-    body = TextareaNode(rows=25,
+class CommentForm(Form):
+    body = nodes.Textarea(rows=25,
                         columns=100,
                         css_class="form-control",
                         template='epictext',
-                        validators=MinLengthValidator(10))
-    submit = SubmitNode(title="Add Comment")
+                        validators=validators.MinLength(10))
+    submit = nodes.Submit(title="Add Comment")
 
 
-class LoginForm(yota.Form):
-    username = EntryNode()
-    password = PasswordNode()
-    submit = SubmitNode(title="Login")
+class LoginForm(Form):
+    username = nodes.Entry()
+    password = nodes.Password()
+    submit = nodes.Submit(title="Login")
 
-class ImportForm(yota.Form):
+class ImportForm(Form):
     hidden = {'form': 'import'}
     go = CheckNode(title="Actually Insert?")
-    body = TextareaNode(rows=25,
+    body = nodes.Textarea(rows=25,
                         columns=100,
                         css_class="form-control",
-                        validators=MinLengthValidator(10))
-    submit = SubmitNode(title="Import")
+                        validators=validators.MinLength(10))
+    submit = nodes.Submit(title="Import")
 
     def validator(self):
         majlst = []
@@ -139,7 +169,7 @@ class ImportForm(yota.Form):
             pts[5] = pts[5].lower().capitalize()
 
             if pts[2] not in ["alum", "senior", "vol", "other"]:
-                self.body.add_error({'message': pts[1] + ' type is invalid.'})
+                self.body.add_msg({'message': pts[1] + ' type is invalid.'})
             else:
                 if pts[2] == "alum":
                     user._type = 2
@@ -151,19 +181,19 @@ class ImportForm(yota.Form):
                     user._type = 3
 
             if pts[4].lower() not in majlst:
-                self.body.add_error({'message': pts[1] + ' major is invalid.'})
+                self.body.add_msg({'message': pts[1] + ' major is invalid.'})
             else:
                 user.major = Major.objects.get(key=pts[4])
 
-            if not EmailValidator().valid(pts[3]):
-                self.body.add_error({'message': pts[1] + ' email is invalid.'})
+            if not Email().valid(pts[3]):
+                self.body.add_msg({'message': pts[1] + ' email is invalid.'})
             else:
                 user.email = pts[3]
 
             try:
                 Team.objects.get(text=pts[5])
             except Team.DoesNotExist:
-                self.start.add_error(
+                self.start.add_msg(
                     {'message': pts[1] + '\'s team ' + pts[5] + ' does not exist!',
                      'type': 'warn',
                      'block': False})
@@ -178,42 +208,45 @@ class ImportForm(yota.Form):
 
 
 
-class PostForm(yota.Form):
+class PostForm(Form):
     title = "Post A New Weekly"
-    body = TextareaNode(rows=25,
+    body = nodes.Textarea(rows=25,
                         columns=100,
                         css_class="form-control",
-                        validators=MinLengthValidator(10),
+                        validators=validators.MinLength(10),
                         template='epictext')
-    submit = SubmitNode(title="Post")
+    submit = nodes.Submit(title="Post")
 
     @classmethod
-    def get_form(cls):
+    def get_form(cls, announce):
         form = cls()
-        now = get_now().isocalendar()
-        weeks = []
-        data = None
-        for i in range(-3, 3):
-            sun, sat = week_through(now[0], now[1]+i)
-            tag = "{0}-{1}".format(now[0], now[1]+i)
-            if i == -1:
-                data = tag
-            weeks.append(
-                (tag, "{0} ({1} through {2})".format(week_human(now[1]+i), sun, sat))
-            )
+        form.announcement = announce
+        if not announce:
+            now = get_now().isocalendar()
+            weeks = []
+            data = None
+            for i in range(-3, 3):
+                sun, sat = week_through(now[0], now[1]+i)
+                tag = "{0}-{1}".format(now[0], now[1]+i)
+                if i == -1:
+                    data = tag
+                weeks.append(
+                    (tag, "{0} ({1} through {2})".format(week_human(now[1]+i), sun, sat))
+                )
 
-        form.insert(1, ListNode(_attr_name='week', items=weeks, data=data))
+            form.insert_node(1, nodes.List(_attr_name='week', items=weeks, data=data))
+        else:
+            form.start.title = "Post a new announcement"
+
+
         return form
 
     def validator(self):
-        try:
-            year, week = self.week.data.split('-')
-            pst = Post.objects.get(year=year, user=g.user.id, week=week)
-        except Post.DoesNotExist:
-            pass
-        else:
-            self.week.add_error({'message': 'A post for the time already exists. You can edit that post <a href="{0}">here</a>.'.format(pst.get_edit_url())})
-
-
-    def error_header_generate(self, errors):
-        self.start.add_error({'message': 'Please fix the errors below'})
+        if self.announcement == False:
+            try:
+                year, week = self.week.data.split('-')
+                pst = Post.objects.get(year=year, user=g.user.id, week=week)
+            except Post.DoesNotExist:
+                pass
+            else:
+                self.week.add_msg({'message': 'A post for the time already exists. You can edit that post <a href="{0}">here</a>.'.format(pst.get_edit_url())})
