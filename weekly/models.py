@@ -124,7 +124,7 @@ class Post(db.Document):
         if self.announcement:
             return url_for('announcements', id=self.id) + "#" + str(self.id)
         else:
-            return url_for('announcements') + \
+            return url_for('index', week=self.week, year=self.year) + \
                     "#" + self.get_comment_hash(comment)
 
     def get_comment_hash(self, comment):
